@@ -1,9 +1,128 @@
 <?xml version="1.0" encoding="utf-8"?>
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:map="http://schemas.android.com/apk/res-auto"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/map"
-    android:name="com.google.android.gms.maps.SupportMapFragment"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MapsActivity" />
+    android:layout_height="match_parent">
+
+    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:map="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".views.MapsActivity" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_searchWay"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#fff"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/gl_ver0.9"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.9"></androidx.constraintlayout.widget.Guideline>
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/gl_ver0.1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.1"></androidx.constraintlayout.widget.Guideline>
+
+        <EditText
+            android:id="@+id/edt_startPoint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Nhập điểm khởi hành"
+            app:layout_constraintLeft_toRightOf="@id/gl_ver0.1"
+            app:layout_constraintRight_toLeftOf="@id/gl_ver0.9"
+            app:layout_constraintTop_toTopOf="parent"></EditText>
+
+        <EditText
+            android:id="@+id/edt_destinationPoint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:hint="Nhập đích đến"
+            app:layout_constraintLeft_toLeftOf="@id/edt_startPoint"
+            app:layout_constraintRight_toRightOf="@id/edt_startPoint"
+            app:layout_constraintTop_toBottomOf="@id/edt_startPoint"></EditText>
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:src="@drawable/ic_baseline_swap_vert_24"
+            app:layout_constraintBottom_toBottomOf="@id/edt_destinationPoint"
+            app:layout_constraintLeft_toRightOf="@id/gl_ver0.9"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/edt_startPoint"></ImageView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/gl_ver0.9.2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.95"></androidx.constraintlayout.widget.Guideline>
+
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/gl_hor0.9"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.9"></androidx.constraintlayout.widget.Guideline>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_btnSearchWay"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:background="@drawable/circle_background"
+        app:layout_constraintBottom_toTopOf="@id/gl_hor0.9"
+        app:layout_constraintRight_toLeftOf="@id/gl_ver0.9.2">
+
+        <ImageView
+            android:id="@+id/btn_searchWay"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:background="@drawable/circle_background"
+            android:src="@drawable/ic_baseline_directions_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"></ImageView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/circle_background_white"
+        app:layout_constraintBottom_toTopOf="@id/cl_btnSearchWay"
+        app:layout_constraintRight_toLeftOf="@id/gl_ver0.9.2">
+
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_baseline_my_location_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:id="@+id/btn_getCurrentLocation"
+            ></ImageView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
