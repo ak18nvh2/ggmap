@@ -1,19 +1,20 @@
 package com.example.ggmaps.api
 
+import com.example.ggmaps.models.direction.Direction
 import com.example.ggmaps.models.geocoding.Geocoding
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface Api {
-//    @GET("directions/json")
-//    fun getDirections(
-//        @Query("origin") origin: String,
-//        @Query("destination") destination: String,
-//        @Query("key") key: String,
-//        @Query("alternatives") alternatives: Boolean = true
-//    ): Call<Direction>
-//
+    @GET("directions/json")
+    fun getDirections(
+        @Query("origin") origin: String,
+        @Query("destination") destination: String,
+        @Query("key") key: String,
+        @Query("alternatives") alternatives: Boolean = true
+    ): Call<Direction>
+
 //    @GET("place/textsearch/json")
 //    fun getAddressbySearch(
 //        @Query("query") location: String,
