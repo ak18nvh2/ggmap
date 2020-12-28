@@ -161,15 +161,29 @@
         android:layout_height="0dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tv_summary"
         app:layout_constraintTop_toBottomOf="@id/gl_hor0.9"
         android:hint="aaaaaaaaaa"
         android:gravity="center"
         android:textColor="@color/white"
         android:background="@color/blue"
-        android:textSize="25dp"
+        android:textSize="16dp"
         android:id="@+id/tv_routeInformation"
         android:layout_marginTop="10dp"
+        ></TextView>
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_routeInformation"
+        android:hint="aaaaaaaaaa"
+        android:gravity="center"
+        android:textColor="@color/white"
+        android:background="@color/blue"
+        android:textSize="16dp"
+        android:id="@+id/tv_summary"
         ></TextView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

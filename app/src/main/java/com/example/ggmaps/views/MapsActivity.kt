@@ -7,8 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
-import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -38,15 +38,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     private lateinit var mLocalMarkerOptions: MarkerOptions
     private var mCurrentAddress = ""
     private var mCountClickToMap = 0
+    private var mIdPolyCurrent = ""
+    private lateinit var mArrayListPolyLine : ArrayList<Polyline>
+    private lateinit var mArrayListRoute: ArrayList<Route>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
         init()
     }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun init() {
+        registerLiveDataListener()
+        mArrayListRoute = ArrayList()
         mGeocodingViewModel = GeocodingViewModel()
         mRouteMarkerList = ArrayList()
+        mArrayListPolyLine = ArrayList()
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -58,6 +65,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         btn_swapMarker.setOnClickListener(this)
         cl_searchWay.visibility = View.GONE
         tv_routeInformation.visibility = View.GONE
+        tv_summary.visibility = View.GONE
         getCurrentLocation()
 
 
@@ -74,23 +82,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
                 cl_btnGetCurrentLocation.visibility = View.GONE
                 cl_btnSearchWay.visibility = View.GONE
                 tv_routeInformation.visibility = View.GONE
-
+                tv_summary.visibility = View.GONE
             } else {
                 cl_searchWay.visibility = View.VISIBLE
                 cl_btnClearMarker.visibility = View.VISIBLE
                 cl_btnGetCurrentLocation.visibility = View.VISIBLE
                 cl_btnSearchWay.visibility = View.VISIBLE
                 tv_routeInformation.visibility = View.VISIBLE
+                tv_summary.visibility = View.VISIBLE
             }
         }
     }
 
     private fun closeKeyboard() {
         val view = this.currentFocus
-        if (view!=null) {
-            val imm =  getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(view.windowToken,0)
-
+        if (view != null) {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(view.windowToken, 0)
         }
     }
 
@@ -102,85 +110,84 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             }
             R.id.btn_searchWay -> {
                 cl_searchWay.visibility = View.VISIBLE
-                edt_startPoint.setText("Vị trí của bạn")
+                edt_startPoint.setText(mCurrentAddress)
             }
             R.id.btn_deleteAllMarker -> {
                 tv_routeInformation.visibility = View.GONE
+                tv_summary.visibility = View.GONE
                 MapsFactory.removeMaker(mMap, mRouteMarkerList)
             }
             R.id.btn_search -> {
                 closeKeyboard()
-                searchWay(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
-
+                mGeocodingViewModel.getDirection(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
             }
             R.id.btn_swapMarker -> {
+                closeKeyboard()
                 val tempString = edt_startPoint.text.toString()
                 edt_startPoint.text = edt_destinationPoint.text
                 edt_destinationPoint.setText(tempString)
-                searchWay(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
+                mGeocodingViewModel.getDirection(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
             }
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun searchWay(start: String, des: String) {
-        if (start == "Vị trí của bạn") {
-            if (des == "Vị trí của bạn") {
-                getDirection(mCurrentAddress, mCurrentAddress)
-            } else {
-                getDirection(mCurrentAddress, des)
-            }
-        } else {
-            if (des == "Vị trí của bạn") {
-                getDirection(start, mCurrentAddress)
-            } else {
-                getDirection(start, des)
-            }
-        }
-
-    }
-
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun getDirection(startPoint: String, destinationPoint: String) {
+    private fun registerLiveDataListener() {
         mGeocodingViewModel.arrayDirection.observe(this, {
             MapsFactory.removeMaker(mMap, mRouteMarkerList)
             if (it != null) {
                 if (it.status.equals("OK")) {
-                    var distanceMin: Int =
-                        it.routes?.get(0)?.legs?.get(0)?.distance?.value!!.toInt()
-                    var distanceIndexMin = 0
-                    it.routes?.forEachIndexed { index, route ->
-                        setMarkersAndRoute(route, this, mMap,R.color.gray)
-                        val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
-                        if (distanceTemp < distanceMin) {
-                            distanceMin = distanceTemp
-                            distanceIndexMin = index
-                        }
-                    }
-                    drawRoute(it.routes?.get(distanceIndexMin)!!)
+                    mArrayListRoute = it.routes as ArrayList<Route>
+                    drawAllRoute(mArrayListRoute, -1, "")
                 } else {
                     Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
                 }
             }
         })
-        mGeocodingViewModel.getDirection(startPoint, destinationPoint)
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun drawRoute(route: Route) {
-        setMarkersAndRoute(route, this, mMap,R.color.blue)
+    private fun drawAllRoute(routes: ArrayList<Route>, id: Int, idPoly: String) {
+        var distanceMin: Int = routes[0].legs?.get(0)?.distance?.value!!.toInt()
+        var distanceIndexMin = 0
+        routes.forEachIndexed { index, route ->
+            val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
+            if (distanceTemp < distanceMin) {
+                distanceMin = distanceTemp
+                distanceIndexMin = index
+            }
+        }
+        routes.forEachIndexed { index, route ->
+            if (index == distanceIndexMin) {
+                drawOneRoute(routes[distanceIndexMin], this, mMap, R.color.blue)
+            } else {
+                drawOneRoute(routes[index], this, mMap, R.color.gray)
+            }
+        }
         tv_routeInformation.visibility = View.VISIBLE
-        tv_routeInformation.text = route.legs?.get(0)?.distance?.text + " ( " + route.legs?.get(0)?.duration?.text + " )"
+        tv_summary.visibility = View.VISIBLE
+        tv_routeInformation.text =
+            routes[distanceIndexMin].legs?.get(0)?.distance?.text + " ( " + routes[distanceIndexMin].legs?.get(
+                0
+            )?.duration?.text + " )"
+        tv_summary.text = routes[distanceIndexMin].summary
+
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun setMarkersAndRoute(route: Route, mContext: Context, mMap: GoogleMap, color: Int) {
+    private fun drawOneRoute(
+        route: Route,
+        mContext: Context,
+        mMap: GoogleMap,
+        color: Int
+    ) {
         val startLatLng = LatLng(
             route.legs?.get(0)?.startLocation?.lat!!,
             route.legs?.get(0)?.startLocation?.lng!!
         )
         val startMarkerOptions: MarkerOptions =
-            MarkerOptions().position(startLatLng).title(route.legs?.get(0)?.startAddress)
+            MarkerOptions().position(startLatLng)
+                .title(route.legs?.get(0)?.startAddress)
                 .icon(
                     BitmapDescriptorFactory.fromBitmap(MapsFactory.drawMarker(mContext, "S"))
                 )
@@ -196,17 +203,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         mRouteMarkerList.add(startMarker)
         mRouteMarkerList.add(endMarker)
 
-        val polylineOptions = MapsFactory.drawRoute(mContext,color)
+        val polylineOptions = MapsFactory.drawRoute(mContext, color)
         val pointsList = PolyUtil.decode(route.overviewPolyline?.points)
         for (point in pointsList) {
             polylineOptions.add(point)
         }
-        mMap.setOnPolylineClickListener {
-            Toast.makeText(this, "hien ne", Toast.LENGTH_SHORT).show()
-        }
         mRoutePolyline = mMap.addPolyline(polylineOptions)
+        Log.d("aaaa", "truoc khi add" + mArrayListPolyLine.size)
+        mArrayListPolyLine.add(mRoutePolyline)
+        Log.d("aaaa", "sau khi add" + mArrayListPolyLine.size)
+        if (color == R.color.blue) {
+            mIdPolyCurrent = mRoutePolyline.id
+        }
+        mMap.setOnPolylineClickListener {
+            mArrayListPolyLine.forEachIndexed { index, polyline ->
+                if (polyline.id == it.id) {
+                    polyline.color = R.color.white
+                    polyline.color = R.color.blue
+                    Log.d("aaaA",mArrayListRoute.size.toString() + mArrayListPolyLine.size)
+                    tv_routeInformation.text =
+                        mArrayListRoute[index].legs?.get(0)?.distance?.text + " ( " + mArrayListRoute[index].legs?.get(
+                            0
+                        )?.duration?.text + " )"
+                    tv_summary.text = mArrayListRoute[index].summary
+                } else {
+                    polyline.color = R.color.white
+                    polyline.color = R.color.gray
+                }
+            }
+        }
+
         mRoutePolyline.isClickable = true
         mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
+
     }
 
     @SuppressLint("MissingPermission")
