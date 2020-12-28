@@ -1,10 +1,7 @@
 package com.example.ggmaps
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PixelFormat
+import android.graphics.*
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.google.android.gms.maps.CameraUpdate
@@ -38,7 +35,7 @@ object MapsFactory {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     fun drawMarker(context: Context, text: String): Bitmap {
-        val drawable = context.resources.getDrawable(R.drawable.ic_marker, context.theme)
+        val drawable = context.resources.getDrawable(R.drawable.ic_marker_2, context.theme)
         val bitmap = Bitmap.createBitmap(
             drawable.intrinsicWidth,
             drawable.intrinsicHeight,
@@ -48,7 +45,7 @@ object MapsFactory {
         drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
         drawable.draw(canvas)
         val paint = Paint()
-        paint.textSize = 50 * context.resources.displayMetrics.density / 3
+        paint.textSize = context.resources.displayMetrics.density * 16
         paint.style = Paint.Style.FILL
         val textCanvas = Canvas(bitmap)
         textCanvas.drawText(
@@ -57,18 +54,17 @@ object MapsFactory {
             (bitmap.height / 2).toFloat(),
             paint
         )
-
         return bitmap
     }
 
-    fun drawRoute(context: Context): PolylineOptions {
+    fun drawRoute(context: Context, color: Int): PolylineOptions {
         val polylineOptions = PolylineOptions()
-        polylineOptions.width(DisplayUtility.px2dip(context, 20.toFloat()).toFloat())
+        polylineOptions.width(DisplayUtility.px2dip(context, 40.toFloat()).toFloat())
         polylineOptions.geodesic(true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            polylineOptions.color(context.resources.getColor(R.color.blue, context.theme))
+            polylineOptions.color(context.resources.getColor(color, context.theme))
         } else {
-            polylineOptions.color(context.resources.getColor(R.color.blue))
+            polylineOptions.color(context.resources.getColor(color))
         }
         return polylineOptions
     }

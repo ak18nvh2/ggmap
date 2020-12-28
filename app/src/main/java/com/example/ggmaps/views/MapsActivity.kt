@@ -8,6 +8,8 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
@@ -34,6 +36,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     lateinit var mRouteMarkerList: ArrayList<Marker>
     private lateinit var mRoutePolyline: Polyline
     private lateinit var mLocalMarkerOptions: MarkerOptions
+    private var mCurrentAddress = ""
+    private var mCountClickToMap = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
@@ -51,7 +55,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         btn_searchWay.setOnClickListener(this)
         btn_deleteAllMarker.setOnClickListener(this)
         btn_search.setOnClickListener(this)
+        btn_swapMarker.setOnClickListener(this)
         cl_searchWay.visibility = View.GONE
+        tv_routeInformation.visibility = View.GONE
         getCurrentLocation()
 
 
@@ -60,6 +66,32 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         mMap.setOnMapLongClickListener { p0 -> getAddressByGeocode(p0) }
+        mMap.setOnMapClickListener {
+            mCountClickToMap++
+            if (mCountClickToMap % 2 == 1) {
+                cl_searchWay.visibility = View.GONE
+                cl_btnClearMarker.visibility = View.GONE
+                cl_btnGetCurrentLocation.visibility = View.GONE
+                cl_btnSearchWay.visibility = View.GONE
+                tv_routeInformation.visibility = View.GONE
+
+            } else {
+                cl_searchWay.visibility = View.VISIBLE
+                cl_btnClearMarker.visibility = View.VISIBLE
+                cl_btnGetCurrentLocation.visibility = View.VISIBLE
+                cl_btnSearchWay.visibility = View.VISIBLE
+                tv_routeInformation.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun closeKeyboard() {
+        val view = this.currentFocus
+        if (view!=null) {
+            val imm =  getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(view.windowToken,0)
+
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -70,45 +102,79 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             }
             R.id.btn_searchWay -> {
                 cl_searchWay.visibility = View.VISIBLE
-                //edt_startPoint.setText("Vị trí của bạn")
+                edt_startPoint.setText("Vị trí của bạn")
             }
             R.id.btn_deleteAllMarker -> {
-                MapsFactory.removeMaker(mMap,mRouteMarkerList)
+                tv_routeInformation.visibility = View.GONE
+                MapsFactory.removeMaker(mMap, mRouteMarkerList)
             }
             R.id.btn_search -> {
-                getDirection(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
+                closeKeyboard()
+                searchWay(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
+
+            }
+            R.id.btn_swapMarker -> {
+                val tempString = edt_startPoint.text.toString()
+                edt_startPoint.text = edt_destinationPoint.text
+                edt_destinationPoint.setText(tempString)
+                searchWay(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
             }
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun searchWay(start: String, des: String) {
+        if (start == "Vị trí của bạn") {
+            if (des == "Vị trí của bạn") {
+                getDirection(mCurrentAddress, mCurrentAddress)
+            } else {
+                getDirection(mCurrentAddress, des)
+            }
+        } else {
+            if (des == "Vị trí của bạn") {
+                getDirection(start, mCurrentAddress)
+            } else {
+                getDirection(start, des)
+            }
+        }
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun getDirection(startPoint: String, destinationPoint: String) {
         mGeocodingViewModel.arrayDirection.observe(this, {
-            MapsFactory.removeMaker(mMap,mRouteMarkerList)
+            MapsFactory.removeMaker(mMap, mRouteMarkerList)
             if (it != null) {
                 if (it.status.equals("OK")) {
-                    var distanceMin: Int = it.routes?.get(0)?.legs?.get(0)?.distance?.value!!.toInt()
+                    var distanceMin: Int =
+                        it.routes?.get(0)?.legs?.get(0)?.distance?.value!!.toInt()
                     var distanceIndexMin = 0
                     it.routes?.forEachIndexed { index, route ->
-                      val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
+                        setMarkersAndRoute(route, this, mMap,R.color.gray)
+                        val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
                         if (distanceTemp < distanceMin) {
                             distanceMin = distanceTemp
                             distanceIndexMin = index
                         }
                     }
-                    it.routes?.get(distanceIndexMin)
-                        ?.let { it1 -> setMarkersAndRoute(it1, this, mMap) }
-                   // mAdapter?.setList(it.routes as MutableList<Route>)
+                    drawRoute(it.routes?.get(distanceIndexMin)!!)
                 } else {
                     Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
                 }
             }
         })
-        mGeocodingViewModel.getDirection(startPoint,destinationPoint)
+        mGeocodingViewModel.getDirection(startPoint, destinationPoint)
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun setMarkersAndRoute(route: Route, mContext: Context, mMap: GoogleMap) {
+    private fun drawRoute(route: Route) {
+        setMarkersAndRoute(route, this, mMap,R.color.blue)
+        tv_routeInformation.visibility = View.VISIBLE
+        tv_routeInformation.text = route.legs?.get(0)?.distance?.text + " ( " + route.legs?.get(0)?.duration?.text + " )"
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun setMarkersAndRoute(route: Route, mContext: Context, mMap: GoogleMap, color: Int) {
         val startLatLng = LatLng(
             route.legs?.get(0)?.startLocation?.lat!!,
             route.legs?.get(0)?.startLocation?.lng!!
@@ -124,20 +190,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         )
         val endMarkerOptions: MarkerOptions =
             MarkerOptions().position(endLatLng).title(route.legs?.get(0)?.endAddress)
-                .icon(BitmapDescriptorFactory.fromBitmap(MapsFactory.drawMarker(mContext, "E")))
+                .icon(BitmapDescriptorFactory.fromBitmap(MapsFactory.drawMarker(mContext, "D")))
         val startMarker = mMap.addMarker(startMarkerOptions)
         val endMarker = mMap.addMarker(endMarkerOptions)
         mRouteMarkerList.add(startMarker)
         mRouteMarkerList.add(endMarker)
 
-        val polylineOptions = MapsFactory.drawRoute(mContext)
+        val polylineOptions = MapsFactory.drawRoute(mContext,color)
         val pointsList = PolyUtil.decode(route.overviewPolyline?.points)
         for (point in pointsList) {
             polylineOptions.add(point)
         }
-
+        mMap.setOnPolylineClickListener {
+            Toast.makeText(this, "hien ne", Toast.LENGTH_SHORT).show()
+        }
         mRoutePolyline = mMap.addPolyline(polylineOptions)
-
+        mRoutePolyline.isClickable = true
         mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
     }
 
@@ -169,10 +237,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         mGeocodingViewModel.geocodingLiveData.observe(this, {
             MapsFactory.removeMaker(mMap, mRouteMarkerList)
             if (it != null) {
+                mCurrentAddress = it.results?.get(0)?.formattedAddress!!
                 mLocalMarkerOptions =
                     MarkerOptions().position(p0)
                         .title(p0.toString())
                         .snippet(it.results?.get(0)?.formattedAddress)
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
                 val localMarker = mMap.addMarker(mLocalMarkerOptions)
                 mRouteMarkerList.add(localMarker)
                 mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
