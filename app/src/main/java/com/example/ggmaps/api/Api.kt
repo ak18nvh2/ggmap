@@ -1,7 +1,8 @@
 package com.example.ggmaps.api
 
-import com.example.ggmaps.models.direction.Direction
-import com.example.ggmaps.models.geocoding.Geocoding
+import com.example.ggmaps.models.AddressResult
+import com.example.ggmaps.models.Direction
+import com.example.ggmaps.models.Geocoding
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -15,11 +16,11 @@ interface Api {
         @Query("alternatives") alternatives: Boolean = true
     ): Call<Direction>
 
-//    @GET("place/textsearch/json")
-//    fun getAddressbySearch(
-//        @Query("query") location: String,
-//        @Query("key") key: String
-//    ): Call<AddressbySearch>
+    @GET("place/textsearch/json")
+    fun getAddressResult(
+        @Query("query") location: String,
+        @Query("key") key: String
+    ): Call<AddressResult>
 
     @GET("geocode/json")
     fun getNearbySearch(

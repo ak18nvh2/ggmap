@@ -5,15 +5,17 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.ggmaps.GoogleAPIKey
 import com.example.ggmaps.api.RetrofitClient
-import com.example.ggmaps.models.direction.Direction
-import com.example.ggmaps.models.geocoding.Geocoding
+import com.example.ggmaps.models.AddressResult
+import com.example.ggmaps.models.Direction
+import com.example.ggmaps.models.Geocoding
 import retrofit2.Call
 import retrofit2.Response
 
-class GeocodingViewModel : ViewModel() {
+class MapViewModel : ViewModel() {
 
     var geocodingLiveData: MutableLiveData<Geocoding> = MutableLiveData()
     var arrayDirection: MutableLiveData<Direction> = MutableLiveData()
+    var addressResultLiveData: MutableLiveData<AddressResult> = MutableLiveData()
     fun getGeocode(latlng: String) {
         val call = RetrofitClient.instance.getNearbySearch(
             latlng,
@@ -58,5 +60,31 @@ class GeocodingViewModel : ViewModel() {
             }
         }
         )
+    }
+
+    fun getAddress(address: String) {
+        val call =
+            RetrofitClient.instance.getAddressResult(address, GoogleAPIKey.GOOGLE_API_KEY)
+
+        call.enqueue(object : retrofit2.Callback<AddressResult> {
+            override fun onResponse(
+                call: Call<AddressResult>,
+                response: Response<AddressResult>
+            ) {
+                if (response.isSuccessful) {
+                    Log.d("MainActivity", "google loaded from API")
+                    addressResultLiveData.value = response.body()
+                } else {
+                    Log.d("MainActivity", response.message() + response.code())
+                    addressResultLiveData.postValue(null)
+                }
+            }
+
+            override fun onFailure(call: Call<AddressResult>, t: Throwable) {
+                Log.d("MainActivity", "error loading from API")
+                addressResultLiveData.postValue(null)
+            }
+
+        })
     }
 }

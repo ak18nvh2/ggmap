@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -16,8 +15,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.ggmaps.MapsFactory
 import com.example.ggmaps.R
-import com.example.ggmaps.models.direction.Route
-import com.example.ggmaps.viewmodels.GeocodingViewModel
+import com.example.ggmaps.models.AddressResult
+import com.example.ggmaps.models.Route
+import com.example.ggmaps.viewmodels.MapViewModel
 import com.google.android.gms.location.LocationServices
 
 import com.google.android.gms.maps.GoogleMap
@@ -32,15 +32,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
 
     private lateinit var mMap: GoogleMap
     private val mPERMISSION_REQUEST_CODE = 1
-    private lateinit var mGeocodingViewModel: GeocodingViewModel
+    private lateinit var mMapViewModel: MapViewModel
     lateinit var mRouteMarkerList: ArrayList<Marker>
     private lateinit var mRoutePolyline: Polyline
     private lateinit var mLocalMarkerOptions: MarkerOptions
     private var mCurrentAddress = ""
     private var mCountClickToMap = 0
     private var mIdPolyCurrent = ""
-    private lateinit var mArrayListPolyLine : ArrayList<Polyline>
+    private lateinit var mArrayListPolyLine: ArrayList<Polyline>
     private lateinit var mArrayListRoute: ArrayList<Route>
+    private var mSearchState = 0
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
@@ -49,11 +52,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun init() {
-        registerLiveDataListener()
+
         mArrayListRoute = ArrayList()
-        mGeocodingViewModel = GeocodingViewModel()
+        mMapViewModel = MapViewModel()
         mRouteMarkerList = ArrayList()
         mArrayListPolyLine = ArrayList()
+        mMapViewModel = MapViewModel()
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -62,18 +66,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         btn_searchWay.setOnClickListener(this)
         btn_deleteAllMarker.setOnClickListener(this)
         btn_search.setOnClickListener(this)
+        btn_searchAddress.setOnClickListener(this)
         btn_swapMarker.setOnClickListener(this)
         cl_searchWay.visibility = View.GONE
         tv_routeInformation.visibility = View.GONE
         tv_summary.visibility = View.GONE
         getCurrentLocation()
-
+        registerLiveDataListener()
 
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        mMap.setOnMapLongClickListener { p0 -> getAddressByGeocode(p0) }
+        mMap.setOnMapLongClickListener { p0 ->
+            getAddressByGeocode(p0)
+            clearSearchState()
+        }
         mMap.setOnMapClickListener {
             mCountClickToMap++
             if (mCountClickToMap % 2 == 1) {
@@ -83,13 +91,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
                 cl_btnSearchWay.visibility = View.GONE
                 tv_routeInformation.visibility = View.GONE
                 tv_summary.visibility = View.GONE
+                edt_inputAddress.visibility = View.GONE
+                btn_searchAddress.visibility = View.GONE
             } else {
-                cl_searchWay.visibility = View.VISIBLE
                 cl_btnClearMarker.visibility = View.VISIBLE
                 cl_btnGetCurrentLocation.visibility = View.VISIBLE
                 cl_btnSearchWay.visibility = View.VISIBLE
-                tv_routeInformation.visibility = View.VISIBLE
-                tv_summary.visibility = View.VISIBLE
+                if (mSearchState == 1) {
+                    tv_routeInformation.visibility = View.VISIBLE
+                    tv_summary.visibility = View.VISIBLE
+                    cl_searchWay.visibility = View.VISIBLE
+
+                    edt_inputAddress.visibility = View.GONE
+                    btn_searchAddress.visibility = View.GONE
+                } else {
+                    tv_routeInformation.visibility = View.GONE
+                    tv_summary.visibility = View.GONE
+                    cl_searchWay.visibility = View.GONE
+
+                    edt_inputAddress.visibility = View.VISIBLE
+                    btn_searchAddress.visibility = View.VISIBLE
+                }
             }
         }
     }
@@ -101,44 +123,103 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             imm.hideSoftInputFromWindow(view.windowToken, 0)
         }
     }
-
+    private fun clearSearchState() {
+        if (mSearchState == 1) {
+            mSearchState = 0
+            MapsFactory.removeMaker(mMap, mRouteMarkerList)
+            tv_routeInformation.visibility = View.GONE
+            tv_summary.visibility = View.GONE
+            cl_searchWay.visibility = View.GONE
+        }
+    }
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onClick(p0: View?) {
         when (p0?.id) {
             R.id.btn_getCurrentLocation -> {
                 getCurrentLocation()
+                clearSearchState()
+
+                btn_searchAddress.visibility = View.VISIBLE
+                edt_inputAddress.visibility = View.VISIBLE
             }
             R.id.btn_searchWay -> {
                 cl_searchWay.visibility = View.VISIBLE
+                btn_searchAddress.visibility = View.GONE
+                edt_inputAddress.visibility = View.GONE
                 edt_startPoint.setText(mCurrentAddress)
             }
             R.id.btn_deleteAllMarker -> {
                 tv_routeInformation.visibility = View.GONE
                 tv_summary.visibility = View.GONE
+                cl_searchWay.visibility = View.GONE
                 MapsFactory.removeMaker(mMap, mRouteMarkerList)
+                mSearchState = 0
+                btn_searchAddress.visibility = View.VISIBLE
+                edt_inputAddress.visibility = View.VISIBLE
             }
             R.id.btn_search -> {
                 closeKeyboard()
-                mGeocodingViewModel.getDirection(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
+                mMapViewModel.getDirection(
+                    edt_startPoint.text.toString(),
+                    edt_destinationPoint.text.toString()
+                )
+                mSearchState = 1
             }
             R.id.btn_swapMarker -> {
                 closeKeyboard()
                 val tempString = edt_startPoint.text.toString()
                 edt_startPoint.text = edt_destinationPoint.text
                 edt_destinationPoint.setText(tempString)
-                mGeocodingViewModel.getDirection(edt_startPoint.text.toString(), edt_destinationPoint.text.toString())
+                mMapViewModel.getDirection(
+                    edt_startPoint.text.toString(),
+                    edt_destinationPoint.text.toString()
+                )
+            }
+            R.id.btn_searchAddress -> {
+                closeKeyboard()
+                clearSearchState()
+                mMapViewModel.getAddress(edt_inputAddress.text.toString())
             }
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun registerLiveDataListener() {
-        mGeocodingViewModel.arrayDirection.observe(this, {
+        mMapViewModel.geocodingLiveData.observe(this, {
             MapsFactory.removeMaker(mMap, mRouteMarkerList)
+            if (it != null) {
+                val latLng = LatLng(
+                    it.results?.get(0)?.geometry?.location?.lat!!,
+                    it.results?.get(0)?.geometry?.location?.lng!!
+                )
+                mCurrentAddress = it.results?.get(0)?.formattedAddress!!
+                mLocalMarkerOptions =
+                    MarkerOptions().position(latLng)
+                        .title(latLng.toString())
+                        .snippet(it.results?.get(0)?.formattedAddress)
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
+                val localMarker = mMap.addMarker(mLocalMarkerOptions)
+                mRouteMarkerList.add(localMarker)
+                mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
+            }
+        })
+        mMapViewModel.arrayDirection.observe(this, {
+            MapsFactory.removeMaker(mMap, mRouteMarkerList)
+            mArrayListPolyLine.clear()
+            mArrayListRoute.clear()
             if (it != null) {
                 if (it.status.equals("OK")) {
                     mArrayListRoute = it.routes as ArrayList<Route>
-                    drawAllRoute(mArrayListRoute, -1, "")
+                    drawAllRoute(mArrayListRoute, -1)
+                } else {
+                    Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
+        mMapViewModel.addressResultLiveData.observe(this, {
+            if (it != null) {
+                if (it.status.equals("OK")) {
+                    drawOnePoint(it, mMap)
                 } else {
                     Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
                 }
@@ -147,35 +228,47 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun drawAllRoute(routes: ArrayList<Route>, id: Int, idPoly: String) {
-        var distanceMin: Int = routes[0].legs?.get(0)?.distance?.value!!.toInt()
-        var distanceIndexMin = 0
-        routes.forEachIndexed { index, route ->
-            val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
-            if (distanceTemp < distanceMin) {
-                distanceMin = distanceTemp
-                distanceIndexMin = index
+    private fun drawAllRoute(routes: ArrayList<Route>, id: Int) {
+        mMap.clear()
+        if (id == -1) {
+            var distanceMin: Int = routes[0].legs?.get(0)?.distance?.value!!.toInt()
+            var distanceIndexMin = 0
+            routes.forEachIndexed { index, route ->
+                val distanceTemp = route.legs?.get(0)?.distance?.value!!.toInt()
+                if (distanceTemp < distanceMin) {
+                    distanceMin = distanceTemp
+                    distanceIndexMin = index
+                }
             }
+            val routeTemp = routes[distanceIndexMin]
+            routes[distanceIndexMin] = routes[routes.size - 1]
+            routes[routes.size - 1] = routeTemp
+        } else {
+            val routeTemp = routes[id]
+            routes[id] = routes[routes.size - 1]
+            routes[routes.size - 1] = routeTemp
         }
-        routes.forEachIndexed { index, route ->
-            if (index == distanceIndexMin) {
-                drawOneRoute(routes[distanceIndexMin], this, mMap, R.color.blue)
+
+        routes.forEachIndexed { index, _ ->
+            if (index == routes.size - 1) {
+                drawOneRoute(routes, routes[index], this, mMap, R.color.green)
             } else {
-                drawOneRoute(routes[index], this, mMap, R.color.gray)
+                drawOneRoute(routes, routes[index], this, mMap, R.color.gray)
             }
         }
+
         tv_routeInformation.visibility = View.VISIBLE
         tv_summary.visibility = View.VISIBLE
         tv_routeInformation.text =
-            routes[distanceIndexMin].legs?.get(0)?.distance?.text + " ( " + routes[distanceIndexMin].legs?.get(
+            routes[routes.size - 1].legs?.get(0)?.distance?.text + " ( " + routes[routes.size - 1].legs?.get(
                 0
             )?.duration?.text + " )"
-        tv_summary.text = routes[distanceIndexMin].summary
-
+        tv_summary.text = routes[routes.size - 1].summary
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun drawOneRoute(
+        routes: ArrayList<Route>,
         route: Route,
         mContext: Context,
         mMap: GoogleMap,
@@ -209,33 +302,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             polylineOptions.add(point)
         }
         mRoutePolyline = mMap.addPolyline(polylineOptions)
-        Log.d("aaaa", "truoc khi add" + mArrayListPolyLine.size)
         mArrayListPolyLine.add(mRoutePolyline)
-        Log.d("aaaa", "sau khi add" + mArrayListPolyLine.size)
         if (color == R.color.blue) {
             mIdPolyCurrent = mRoutePolyline.id
         }
         mMap.setOnPolylineClickListener {
+            var idTemp = -1
             mArrayListPolyLine.forEachIndexed { index, polyline ->
                 if (polyline.id == it.id) {
-                    polyline.color = R.color.white
-                    polyline.color = R.color.blue
-                    Log.d("aaaA",mArrayListRoute.size.toString() + mArrayListPolyLine.size)
-                    tv_routeInformation.text =
-                        mArrayListRoute[index].legs?.get(0)?.distance?.text + " ( " + mArrayListRoute[index].legs?.get(
-                            0
-                        )?.duration?.text + " )"
-                    tv_summary.text = mArrayListRoute[index].summary
-                } else {
-                    polyline.color = R.color.white
-                    polyline.color = R.color.gray
+                    idTemp = index
                 }
             }
+            mArrayListPolyLine.clear()
+            drawAllRoute(routes, idTemp)
         }
 
         mRoutePolyline.isClickable = true
         mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
 
+    }
+
+    private fun drawOnePoint(addressResult: AddressResult, mMap: GoogleMap) {
+        val latLng = LatLng(
+            addressResult.results?.get(0)?.geometry?.location?.lat!!,
+            addressResult.results?.get(0)?.geometry?.location?.lng!!
+        )
+        mLocalMarkerOptions =
+            MarkerOptions().position(latLng)
+                .title(latLng.toString())
+                .snippet(addressResult.results?.get(0)?.formattedAddress)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
+        val localMarker = mMap.addMarker(mLocalMarkerOptions)
+        mRouteMarkerList.add(localMarker)
+        mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
     }
 
     @SuppressLint("MissingPermission")
@@ -263,22 +362,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     }
 
     private fun getAddressByGeocode(p0: LatLng) {
-        mGeocodingViewModel.geocodingLiveData.observe(this, {
-            MapsFactory.removeMaker(mMap, mRouteMarkerList)
-            if (it != null) {
-                mCurrentAddress = it.results?.get(0)?.formattedAddress!!
-                mLocalMarkerOptions =
-                    MarkerOptions().position(p0)
-                        .title(p0.toString())
-                        .snippet(it.results?.get(0)?.formattedAddress)
-                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
-                val localMarker = mMap.addMarker(mLocalMarkerOptions)
-                mRouteMarkerList.add(localMarker)
-                mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
-            }
-        })
         val latLng: String = p0.latitude.toString() + "," + p0.longitude.toString()
-        mGeocodingViewModel.getGeocode(latLng)
+        mMapViewModel.getGeocode(latLng)
     }
 
     override fun onRequestPermissionsResult(

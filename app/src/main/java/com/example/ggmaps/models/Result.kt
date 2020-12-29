@@ -1,4 +1,4 @@
-package com.example.ggmaps.models.geocoding
+package com.example.ggmaps.models
 
 import com.google.gson.annotations.Expose
 
@@ -31,4 +31,16 @@ class Result {
     @SerializedName("types")
     @Expose
     var types: List<String>? = null
+
+    @SerializedName("icon")
+    @Expose
+    var icon: String? = null
+
+    @SerializedName("name")
+    @Expose
+    var name: String? = null
+
+    @SerializedName("reference")
+    @Expose
+    var reference: String? = null
 }

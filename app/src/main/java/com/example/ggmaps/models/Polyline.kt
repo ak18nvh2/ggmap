@@ -1,4 +1,4 @@
-package com.example.ggmaps.models.direction
+package com.example.ggmaps.models
 
 import com.google.gson.annotations.Expose
 

@@ -1,4 +1,4 @@
-package com.example.ggmaps.models.direction
+package com.example.ggmaps.models
 
 import com.google.gson.annotations.Expose
 
@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName
 
 
 
-class StartLocation {
+class Location {
     @SerializedName("lat")
     @Expose
     var lat: Double? = null
@@ -15,4 +15,5 @@ class StartLocation {
     @SerializedName("lng")
     @Expose
     var lng: Double? = null
+
 }

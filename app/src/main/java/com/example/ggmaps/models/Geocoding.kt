@@ -1,4 +1,4 @@
-package com.example.ggmaps.models.geocoding
+package com.example.ggmaps.models
 
 import com.google.gson.annotations.Expose
 

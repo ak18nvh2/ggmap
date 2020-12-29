@@ -1,7 +1,7 @@
-package com.example.ggmaps.models.geocoding
+package com.example.ggmaps.models
 
-import com.example.ggmaps.models.direction.Northeast
-import com.example.ggmaps.models.direction.Southwest
+import com.example.ggmaps.models.Northeast
+import com.example.ggmaps.models.Southwest
 import com.google.gson.annotations.Expose
 import com.google.gson.annotations.SerializedName
 

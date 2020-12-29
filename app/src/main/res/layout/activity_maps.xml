@@ -185,6 +185,27 @@
         android:textSize="16dp"
         android:id="@+id/tv_summary"
         ></TextView>
+    <EditText
+        android:padding="16dp"
+        android:background="@color/white"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Tìm kiếm ở đây"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="10dp"
+        android:id="@+id/edt_inputAddress"
+        ></EditText>
+    <ImageView
+        android:id="@+id/btn_searchAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="@id/edt_inputAddress"
+        app:layout_constraintBottom_toBottomOf="@id/edt_inputAddress"
+        android:src="@drawable/ic_baseline_search_24"
+        ></ImageView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 
