@@ -5,12 +5,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.ggmaps.MapsFactory
@@ -19,7 +19,6 @@ import com.example.ggmaps.models.AddressResult
 import com.example.ggmaps.models.Route
 import com.example.ggmaps.viewmodels.MapViewModel
 import com.google.android.gms.location.LocationServices
-
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -38,11 +37,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     private lateinit var mLocalMarkerOptions: MarkerOptions
     private var mCurrentAddress = ""
     private var mCountClickToMap = 0
-    private var mIdPolyCurrent = ""
     private lateinit var mArrayListPolyLine: ArrayList<Polyline>
     private lateinit var mArrayListRoute: ArrayList<Route>
     private var mSearchState = 0
-
+    private var mZoomLevel: Float = 16f
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +77,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         mMap.setOnMapLongClickListener { p0 ->
+            mZoomLevel = mMap.cameraPosition.zoom
             getAddressByGeocode(p0)
             clearSearchState()
         }
@@ -123,6 +122,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             imm.hideSoftInputFromWindow(view.windowToken, 0)
         }
     }
+
     private fun clearSearchState() {
         if (mSearchState == 1) {
             mSearchState = 0
@@ -132,23 +132,28 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
             cl_searchWay.visibility = View.GONE
         }
     }
+
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onClick(p0: View?) {
         when (p0?.id) {
             R.id.btn_getCurrentLocation -> {
                 getCurrentLocation()
                 clearSearchState()
-
                 btn_searchAddress.visibility = View.VISIBLE
                 edt_inputAddress.visibility = View.VISIBLE
             }
             R.id.btn_searchWay -> {
+
                 cl_searchWay.visibility = View.VISIBLE
                 btn_searchAddress.visibility = View.GONE
                 edt_inputAddress.visibility = View.GONE
                 edt_startPoint.setText(mCurrentAddress)
+                edt_startPoint.requestFocus()
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(edt_startPoint, InputMethodManager.SHOW_IMPLICIT)
             }
             R.id.btn_deleteAllMarker -> {
+
                 tv_routeInformation.visibility = View.GONE
                 tv_summary.visibility = View.GONE
                 cl_searchWay.visibility = View.GONE
@@ -156,9 +161,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
                 mSearchState = 0
                 btn_searchAddress.visibility = View.VISIBLE
                 edt_inputAddress.visibility = View.VISIBLE
+                edt_inputAddress.setText("")
+                edt_destinationPoint.setText("")
+                edt_startPoint.setText("")
+                mCurrentAddress = ""
             }
             R.id.btn_search -> {
                 closeKeyboard()
+
                 mMapViewModel.getDirection(
                     edt_startPoint.text.toString(),
                     edt_destinationPoint.text.toString()
@@ -199,8 +209,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
                         .snippet(it.results?.get(0)?.formattedAddress)
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
                 val localMarker = mMap.addMarker(mLocalMarkerOptions)
+                localMarker.showInfoWindow()
                 mRouteMarkerList.add(localMarker)
-                mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
+                mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList,mZoomLevel))
             }
         })
         mMapViewModel.arrayDirection.observe(this, {
@@ -303,9 +314,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         }
         mRoutePolyline = mMap.addPolyline(polylineOptions)
         mArrayListPolyLine.add(mRoutePolyline)
-        if (color == R.color.blue) {
-            mIdPolyCurrent = mRoutePolyline.id
-        }
         mMap.setOnPolylineClickListener {
             var idTemp = -1
             mArrayListPolyLine.forEachIndexed { index, polyline ->
@@ -318,7 +326,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
         }
 
         mRoutePolyline.isClickable = true
-        mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
+        mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList, mZoomLevel))
 
     }
 
@@ -333,8 +341,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
                 .snippet(addressResult.results?.get(0)?.formattedAddress)
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_marker_3))
         val localMarker = mMap.addMarker(mLocalMarkerOptions)
+        localMarker.showInfoWindow()
         mRouteMarkerList.add(localMarker)
-        mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList))
+        mMap.animateCamera(MapsFactory.autoZoomLevel(mRouteMarkerList, mZoomLevel))
     }
 
     @SuppressLint("MissingPermission")
@@ -363,7 +372,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, View.OnClickListen
 
     private fun getAddressByGeocode(p0: LatLng) {
         val latLng: String = p0.latitude.toString() + "," + p0.longitude.toString()
-        mMapViewModel.getGeocode(latLng)
+        mMapViewModel.getGeocoding(latLng)
     }
 
     override fun onRequestPermissionsResult(

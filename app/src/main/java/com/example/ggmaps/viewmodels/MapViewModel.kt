@@ -16,7 +16,7 @@ class MapViewModel : ViewModel() {
     var geocodingLiveData: MutableLiveData<Geocoding> = MutableLiveData()
     var arrayDirection: MutableLiveData<Direction> = MutableLiveData()
     var addressResultLiveData: MutableLiveData<AddressResult> = MutableLiveData()
-    fun getGeocode(latlng: String) {
+    fun getGeocoding(latlng: String) {
         val call = RetrofitClient.instance.getNearbySearch(
             latlng,
             GoogleAPIKey.GOOGLE_API_KEY

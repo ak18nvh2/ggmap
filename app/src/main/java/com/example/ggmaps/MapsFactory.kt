@@ -13,23 +13,25 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.PolylineOptions
 
 object MapsFactory {
-    fun autoZoomLevel(markerList: ArrayList<Marker>): CameraUpdate {
-        if (markerList.size == 1) {
+    fun autoZoomLevel(markerList: ArrayList<Marker>, zoomLevel: Float): CameraUpdate {
+        return if (markerList.size == 1) {
             val latitude = markerList[0].position.latitude
             val longitude = markerList[0].position.longitude
             val latLng = LatLng(latitude, longitude)
+            return if (zoomLevel != 16f) {
+                CameraUpdateFactory.newLatLngZoom(latLng, zoomLevel)
+            } else {
+                CameraUpdateFactory.newLatLngZoom(latLng, 16f)
+            }
 
-            return CameraUpdateFactory.newLatLngZoom(latLng, 13f)
         } else {
             val builder = LatLngBounds.Builder()
             for (marker in markerList) {
                 builder.include(marker.position)
             }
             val bounds = builder.build()
-
-            val padding = 200 // offset from edges of the map in pixels
-
-            return CameraUpdateFactory.newLatLngBounds(bounds, padding)
+            val padding = 200
+            CameraUpdateFactory.newLatLngBounds(bounds, padding)
         }
     }
 
